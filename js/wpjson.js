@@ -152,7 +152,7 @@
 				e.preventDefault(); // Förhindrar att a-elementet fungerar som vanligt.
 
 				var link = $(this).attr('href'); // Hämtar värdet som finns i href för a-elementet som klickats på.
-				currListID = $(this).attr('data-id');
+				currListID = $(this).attr('data-id'); // Hämta värdet som finns lagrat i attributet "data-id".
 
 				$('.modal-overlay').addClass('is-visible');
 				$('.modal').addClass('is-visible');
@@ -167,10 +167,10 @@
 				$('.modal button.prev-btn').on('click', function (e) { // Skapar en lyssnare för "föregående"-knappen.
 					e.preventDefault();
 
-					if ((currListID - 1) < 0) { // Om användaren klickar på föregående, men är på första bilden
-						currListID = pictureArray.length-1; // Ta då arrayns längd minus ett för att få sista bildens ID.
+					if ((Number(currListID) - 1) < 0) { // Om användaren klickar på föregående, men är på första bilden. Använder javascript-funktionen Number för att konvartera currListID till integer istället för string.
+						currListID = pictureArray.length - 1; // Ta då arrayns längd minus ett för att få sista bildens ID.
 					} else {
-						currListID = currListID -1; // Annars ta nuvarande ID minus ett för att gå bakåt.
+						currListID = Number(currListID) - 1; // Annars ta nuvarande ID minus ett för att gå bakåt.
 					}
 
 					$('.modal img.showed-img').attr('src', pictureArray[currListID]); // Ändra attributet src för bilden till den nya bilden.
@@ -179,10 +179,10 @@
 				$('.modal button.next-btn').on('click', function (e) { // Skapa en lyssnare för "nästa"-knappen.
 					e.preventDefault();
 
-					if ((currListID + 1) > pictureArray.length-1) { // Om det inte finns fler bilder att visa så börja om från början.
+					if ((Number(currListID) + 1) > pictureArray.length - 1) { // Om det inte finns fler bilder att visa så börja om från början.
 						currListID = 0;
 					} else {
-						currListID = currListID +1; // Annars gå till nästa bild.
+						currListID++; // Annars gå till nästa bild.
 					}
 
 					$('.modal img.showed-img').attr('src', pictureArray[currListID]);
