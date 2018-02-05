@@ -9,6 +9,12 @@ body {
   font-family: 'Roboto', sans-serif;
   margin: 0;
 }
+.bg {
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  z-index: 0;
+}
 .wrapper {
   width: 790px;
   margin: 0 auto;
@@ -97,6 +103,7 @@ nav ul a.active {
   width: 450px;
 } */
 .showed-img {
+  float: left;
   width: 450px;
 }
 .modal-overlay {
@@ -111,4 +118,20 @@ nav ul a.active {
 .modal-overlay.is-visible {
   display: block;
   z-index: 1009;
+}
+.prev-btn {
+  float:left;
+  display: block;
+  background: #000;
+  color: #fff;
+  border: 0;
+  padding: 6px 4px;
+}
+.next-btn {
+  float:right;
+  display: block;
+  background: #000;
+  color: #fff;
+  border: 0;
+  padding: 6px 6px;
 }

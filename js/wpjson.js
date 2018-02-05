@@ -3,6 +3,7 @@
 		var url = 'http://skola.dnest.se/wpjson/wp-json'; // Skapa en global variabel med länk.
 		var listContent = ''; // Skapa en tom global variabel för senare användning.
 		var gallerySuccess = false; // Skapa en global variabel för senare användning.
+		var currSection = null; // Skapa en global variabel för att hålla koll på vilken sektion som är aktiv.
 
 		function eventListening() {
 			$('nav a').on({ // Lägger en lyssnare på a-elementen i nav.
@@ -27,32 +28,53 @@
 
 		function scrolledPast($object) { // Funktion som tar emot ett jQuery-objekt som parameter.
       var endZone = $object.offset().top; // Variabel med värdet på objektets top position.
-      return endZone < $(window).scrollTop(); // Returnerar true eller false beroende på om objektets top-värde är större eller mindre är fönstrets översta position.
+      return endZone < $(window).scrollTop() + 20; // Returnerar true eller false beroende på om objektets top-värde är större eller mindre är fönstrets översta position.
     } // Slut på scrolledPast.
 
 		function scrollEvent(mediaObject) { // Funktion som tar emot ett objekt som parameter.
-			$(window).on('scroll', function () { // Lyssnar på eventet "scroll". Körs varje gång man skrollar.
-				var $relevantSection = $('section').filter(function () { // Väljer alla sections med filtrerar ut de som inte får värdet true via funktionen scrolledPast. Returnerar ett jQuery-objekt för den sektion som för tillfälligt är "aktiv".
-					return scrolledPast($(this)); // Returernar true eller false.
-				}).last(); // Returernar den sista bland de matchade sektionerna.
+			onScroll(mediaObject);
 
-				if($relevantSection.length) { // Om variabeln $relevantSection innehåller något.
-					$('body').css({ // Styla body med inline style.
+			$(window).on('scroll', function () { // Lyssnar på eventet "scroll". Körs varje gång man skrollar.
+				onScroll(mediaObject);
+    	});
+		} // Slut på scrollEvent.
+
+		function onScroll(mediaObject) {
+			var $relevantSection = $('section').filter(function () { // Väljer alla sections med filtrerar ut de som inte får värdet true via funktionen scrolledPast. Returnerar ett jQuery-objekt för den sektion som för tillfälligt är "aktiv".
+				return scrolledPast($(this)); // Returernar true eller false.
+			}).last(); // Returernar den sista bland de matchade sektionerna.
+
+			if($relevantSection.length) { // Om variabeln $relevantSection innehåller något.
+				if(currSection == null || currSection != $relevantSection.attr('id')) { // Om currSection är null eller om currSection INTE är det samma som den nuvarande sektionen.
+					currSection = $relevantSection.attr('id'); // Lagra ny sektion i currSection.
+					$('nav a.active').removeClass('active'); // Ta bort klassen active på a-elementen.
+					var tempVar = '#' + currSection; // Använd en temporär variabel för att slå ihop hash-teckent med id.
+
+					$('nav a[href="' + tempVar + '"]').addClass('active'); // Lägg klassen active på a-elementet som har samma id-nummer som sektionen.
+
+					$('.bg').stop().css({ // Stoppa pågående animation och styla div.bg med inline style.
 						'background-image': 'url("'+ mediaObject[$relevantSection.attr('id')].pic +'")', // Sätter bakgrundsbild utifrån vad som finns i media-objektet.
 						'background-repeat': 'no-repeat', // CSS-regel för att bilden inte ska repeteras.
 						'background-attachment': 'fixed', // CSS-regel för att bilden inte ska skrolla.
-						'background-size': 'cover' // CSS-regel för att fylla hela fönstret.
-					});
-				} else { // Om variabeln $relevantSection inte innehåller något.
-					$('body').css({ // Töm alla css-regler.
-						'background-image': '',
-						'background-repeat': '',
-						'background-attachment': '',
-						'background-size': 'cover'
-					});
+						'background-size': 'cover', // CSS-regel för att fylla hela fönstret.
+						'opacity': '0' // CSS-regel för att ändra opaciteten (genomskinlighet)
+					}).animate({ // Animera genom att förändra opaciteten.
+						opacity: 1
+					}, 500); // 500 är hur lång tid animationen ska hålla på.
 				}
-    	});
-		} // Slut på scrollEvent.
+			} else { // Om ingen sektion med id hittas så rensa all tidigare styling.
+				currSection = null; // Sätt currSection till null om inget är valt.
+				$('.bg').stop().css({ // Stopppa påbående animation, styla body med inline style.
+					'background-image': '', // Sätter bakgrundsbild utifrån vad som finns i media-objektet.
+					'background-repeat': '', // CSS-regel för att bilden inte ska repeteras.
+					'background-attachment': '', // CSS-regel för att bilden inte ska skrolla.
+					'background-size': '', // CSS-regel för att fylla hela fönstret.
+					'opacity': '0' // CSS-regel för att ändra opaciteten (genomskinlighet)
+				}).animate({
+					opacity: 1
+				}, 500);
+			}
+		}
 
     function loadData() { // Ladda in poster.
       $.ajax({ // Kör ajax-klassen som finns i jQury.
@@ -115,10 +137,13 @@
 
 		function createGallery(data) { // Skapa galleriet utifrån den hämtade datan.
 			$('#gallery').before('<h2>Galleri</h2>\n'); // Lägger till en h2-rubrik innan elementet med id gallery.
-			var htmlContent = ''; // SKapar en ny "tom" variabel där all html ska ligga i.
+			var htmlContent = ''; // Skapar en ny "tom" variabel där all html ska ligga i.
+			var pictureArray = []; // Skapa array för att lagra bilder i.
+			var currListID = ''; // Skapa variabel för att veta vilken bild som för nuvarande är vald.
 
 			for (var i = 0; i < data.length; i++) { // Loopar igenom data-objektet som skickats med som parameter.
-				htmlContent += '<a href="' + data[i].media_details.sizes.medium_large.source_url + '"><img src="' + data[i].media_details.sizes.thumbnail.source_url + '" alt=""></a>'; // Lägger till alla bilder som hittas.
+				htmlContent += '<a href="' + data[i].media_details.sizes.medium_large.source_url + '" data-id="' + i + '"><img src="' + data[i].media_details.sizes.thumbnail.source_url + '" alt=""></a>'; // Lägger till alla bilder som hittas.
+				pictureArray.push(data[i].media_details.sizes.medium_large.source_url); // Lägg till en ny bild i arrayn.
 			}
 
 			$('#gallery').html(htmlContent); // Lägger till alla bilderna i elementet med id gallery.
@@ -127,16 +152,42 @@
 				e.preventDefault(); // Förhindrar att a-elementet fungerar som vanligt.
 
 				var link = $(this).attr('href'); // Hämtar värdet som finns i href för a-elementet som klickats på.
+				currListID = $(this).attr('data-id');
+
 				$('.modal-overlay').addClass('is-visible');
 				$('.modal').addClass('is-visible');
 
-				$('.modal').html('<img src="'+ link +'" alt="" class="showed-img">'); // Skriver över innehållet för elementet med klassen modal med en ny bild.
-			}); // Slut på onClick för bilderna.
+				$('.modal').html('<button class="prev-btn">Föregående</button><img src="'+ link +'" alt="" class="showed-img"><button class="next-btn">Nästa</button>'); // Skriver över innehållet för elementet med klassen modal med en ny bild och knappar för föregående och nästa.
 
-			$('.modal-overlay').on('click', function () { // Gör det möjligt att stänga modal-elementet genom att klicka "utanför".
-				$('.modal-overlay').removeClass('is-visible');
-				$('.modal').removeClass('is-visible');
-			}); // Slut för onClick för modal-overlay.
+				$('.modal-overlay').on('click', function () { // Gör det möjligt att stänga modal-elementet genom att klicka "utanför".
+					$('.modal-overlay').removeClass('is-visible');
+					$('.modal').removeClass('is-visible');
+				}); // Slut för onClick för modal-overlay.
+
+				$('.modal button.prev-btn').on('click', function (e) { // Skapar en lyssnare för "föregående"-knappen.
+					e.preventDefault();
+
+					if ((currListID - 1) < 0) { // Om användaren klickar på föregående, men är på första bilden
+						currListID = pictureArray.length-1; // Ta då arrayns längd minus ett för att få sista bildens ID.
+					} else {
+						currListID = currListID -1; // Annars ta nuvarande ID minus ett för att gå bakåt.
+					}
+
+					$('.modal img.showed-img').attr('src', pictureArray[currListID]); // Ändra attributet src för bilden till den nya bilden.
+				});
+
+				$('.modal button.next-btn').on('click', function (e) { // Skapa en lyssnare för "nästa"-knappen.
+					e.preventDefault();
+
+					if ((currListID + 1) > pictureArray.length-1) { // Om det inte finns fler bilder att visa så börja om från början.
+						currListID = 0;
+					} else {
+						currListID = currListID +1; // Annars gå till nästa bild.
+					}
+
+					$('.modal img.showed-img').attr('src', pictureArray[currListID]);
+				});
+			}); // Slut på onClick för bilderna.
 		} // Slut på createGallery.
 
     function createPosts(data) { // Skapar utseendet för posterna.
