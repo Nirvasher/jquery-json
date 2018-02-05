@@ -25,6 +25,35 @@
 			});
 		} // Slut på eventListening.
 
+		function scrolledPast($object) { // Funktion som tar emot ett jQuery-objekt som parameter.
+      var endZone = $object.offset().top; // Variabel med värdet på objektets top position.
+      return endZone < $(window).scrollTop(); // Returnerar true eller false beroende på om objektets top-värde är större eller mindre är fönstrets översta position.
+    } // Slut på scrolledPast.
+
+		function scrollEvent(mediaObject) { // Funktion som tar emot ett objekt som parameter.
+			$(window).on('scroll', function () { // Lyssnar på eventet "scroll". Körs varje gång man skrollar.
+				var $relevantSection = $('section').filter(function () { // Väljer alla sections med filtrerar ut de som inte får värdet true via funktionen scrolledPast. Returnerar ett jQuery-objekt för den sektion som för tillfälligt är "aktiv".
+					return scrolledPast($(this)); // Returernar true eller false.
+				}).last(); // Returernar den sista bland de matchade sektionerna.
+
+				if($relevantSection.length) { // Om variabeln $relevantSection innehåller något.
+					$('body').css({ // Styla body med inline style.
+						'background-image': 'url("'+ mediaObject[$relevantSection.attr('id')].pic +'")', // Sätter bakgrundsbild utifrån vad som finns i media-objektet.
+						'background-repeat': 'no-repeat', // CSS-regel för att bilden inte ska repeteras.
+						'background-attachment': 'fixed', // CSS-regel för att bilden inte ska skrolla.
+						'background-size': 'cover' // CSS-regel för att fylla hela fönstret.
+					});
+				} else { // Om variabeln $relevantSection inte innehåller något.
+					$('body').css({ // Töm alla css-regler.
+						'background-image': '',
+						'background-repeat': '',
+						'background-attachment': '',
+						'background-size': 'cover'
+					});
+				}
+    	});
+		} // Slut på scrollEvent.
+
     function loadData() { // Ladda in poster.
       $.ajax({ // Kör ajax-klassen som finns i jQury.
         url: url + '/wp/v2/posts/?_embed=true', // Vald url som JSON hämtas från.
@@ -111,6 +140,7 @@
 		} // Slut på createGallery.
 
     function createPosts(data) { // Skapar utseendet för posterna.
+			var fullMedia = new Object(); // Skapar ett object för att lagra relevanta bilder.
       var htmlContent = ''; // Skapar en ny "tom" variabel som all html ska ligga i.
 
       for (var i = 0; i < data.length; i++) { // Loopar igenom data-objektet som skickats med som parameter.
@@ -123,6 +153,11 @@
           for (var i2 = 0; i2 < postData._embedded['wp:featuredmedia'].length; i2++) { // Loop om det finns fler än en utvald bild.
             var featuredMedia = postData._embedded['wp:featuredmedia'][i2]; // Lagra nuvarande bild i variabel.
             var media = ''; // Skapa tom variabel för att lagra "rätt" bild.
+
+						// Lagrar postID och utvald bild (i full storlek) i ett objekt.
+						fullMedia[postData.id] = {
+							pic: featuredMedia.media_details.sizes.full.source_url
+						};
 
             if(featuredMedia.media_details.sizes.medium_large) { // Om en utvald bild finns i storleken medium_large, så lagra den i media-variabeln.
               media = featuredMedia.media_details.sizes.medium_large.source_url;
@@ -137,6 +172,8 @@
       }
 
       $('.container').append(htmlContent); // Lägg till alla poster som finns i variabeln htmlContent och lägg till det i elementet med klassen container.
+
+			scrollEvent(fullMedia); // Kör scrollEvent-funktionen och skickar med parametern fullMedia som är ett objekt.
     } // Slut på createPosts.
 
 		// Kör igång funktionen loadData.
