@@ -31,7 +31,7 @@ nav {
   width: 200px;
   margin-right: 10px;
   position: fixed;
-  top: 0;
+  top: 45px;
 }
 nav ul {
   list-style: none;

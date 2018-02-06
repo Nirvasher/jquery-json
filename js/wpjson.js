@@ -1,9 +1,9 @@
 (function ($) { // För att undvika konflikter med andra bibliotek.
 	$(document).ready(function () { // Om DOM är färdiginläst.
 		var url = 'http://skola.dnest.se/wpjson/wp-json'; // Skapa en global variabel med länk.
-		var listContent = ''; // Skapa en tom global variabel för senare användning.
-		var gallerySuccess = false; // Skapa en global variabel för senare användning.
 		var currSection = null; // Skapa en global variabel för att hålla koll på vilken sektion som är aktiv.
+		var postsData = ''; // Skapa en global variabel för posters data att lagras i.
+		var mediaData = ''; // Skapa en global variabel för bilders data att lagras i.
 
 		function eventListening() {
 			$('nav a').on({ // Lägger en lyssnare på a-elementen i nav.
@@ -32,7 +32,7 @@
     } // Slut på scrolledPast.
 
 		function scrollEvent(mediaObject) { // Funktion som tar emot ett objekt som parameter.
-			onScroll(mediaObject);
+			onScroll(mediaObject); // Kör onScroll direkt vid inläsning av sida för att lägga till bakgrund och markera rätt i menyn.
 
 			$(window).on('scroll', function () { // Lyssnar på eventet "scroll". Körs varje gång man skrollar.
 				onScroll(mediaObject);
@@ -60,7 +60,7 @@
 						'opacity': '0' // CSS-regel för att ändra opaciteten (genomskinlighet)
 					}).animate({ // Animera genom att förändra opaciteten.
 						opacity: 1
-					}, 500); // 500 är hur lång tid animationen ska hålla på.
+					}, 800); // 500 är hur lång tid animationen ska hålla på.
 				}
 			} else { // Om ingen sektion med id hittas så rensa all tidigare styling.
 				currSection = null; // Sätt currSection till null om inget är valt.
@@ -72,66 +72,56 @@
 					'opacity': '0' // CSS-regel för att ändra opaciteten (genomskinlighet)
 				}).animate({
 					opacity: 1
-				}, 500);
+				}, 800);
 			}
 		}
 
-    function loadData() { // Ladda in poster.
-      $.ajax({ // Kör ajax-klassen som finns i jQury.
-        url: url + '/wp/v2/posts/?_embed=true', // Vald url som JSON hämtas från.
-        method: 'get', // GET-metoden används, eftersom vi hämtar värdet.
-        timeout: 2000, // Timeout, hur lång tid ajax-anropet har på sig.
-        beforeSend: function () { // Annonym funktion som körs innan hämtningen görs.
-					$('.modal-overlay').addClass('is-visible');
-					$('.modal').addClass('is-visible');
-					$('.modal').html('<img src="img/ajax-loader.gif" alt="">'); // Ersätter allt innehåll i elementet som har klassen modal med en bild.
-        },
-        complete: function () { // Annonym funktion som körs när ajax-körningen är helt klar. Det allra sista som körs.
-					$('.modal-overlay').removeClass('is-visible');
-					$('.modal').removeClass('is-visible');
-					$('.modal').html(''); // Tömmer elementet med klassen modal (infogar ingenting).
-					loadGallery(); // Kör funktionen loadGallery som börjar ladda in galleriet.
-        },
-        success: function (data) { // Annonym funktion som körs om hämtningen lyckades.
-          createPosts(data); // Kör createPosts där parametern data skickas med.
-        },
-				error: function () { // Annonym funktion som körs om hämtningen misslyckades.
-					$('.container').html('Misslyckades med att ladda in poster från Wordpress.'); // Skriver ett felmeddelande till .container.
-				}
-      });
-    } // Slut på loadData.
+		function loadAjax() { // Funktion som kör igång hämtning av Wordpress REST API data.
+			$('.wrapper').hide(); // Döljer hela sidan, så inga "tomma" DIV-element visas.
+			$('.modal-overlay').addClass('is-visible'); // Lägger till css-klassen is-visible.
+			$('.modal').addClass('is-visible');
+			$('.modal').html('<img src="img/ajax-loader.gif" alt="">'); // Ersätter allt innehåll i elementet som har klassen modal med en bild.
 
-		function loadGallery() { // Ladda in galleriet.
-			$.ajax({
-				url: url + '/wp/v2/media/?_embed=true', // Samma som tidigare, bara att nu hämtas endast mediadelen av JSON.
-				method: 'get',
-				timeout: 2000,
-				beforeSend: function () {
-					$('#gallery').html('Laddar in galleri-data...');
-				},
-				success: function (data) {
-					gallerySuccess = true; // Meddelar att galleriet skapades utan problem.
-					createGallery(data); // Kör funktionen createGallery med parametern data.
-				},
-				complete: function () {
-					createNav(); // Skapa navigation då alla ajax-körningar är slutförda.
-				},
-				error: function () {
-					$('#gallery').html('');
-					$('#gallery').before('Misslyckades med att ladda in galleri-data.')
-				}
-			});
-		} // Slut på loadGallery.
+			// För att köra fler än ett Aja-anrop på samma gång används jQuery-klassen when tillsammans med jQuery-klassen ajax.
+			$.when($.ajax(url + '/wp/v2/posts/?_embed=true'), $.ajax(url + '/wp/v2/media/?_embed=true')) // Kör två ajax-anrop
+			.done(function (ajaxPosts, ajaxMedia) { // När körningen är klar, hämta data.
+				postsData = ajaxPosts[0]; // Lagra data i global variabel.
+				mediaData = ajaxMedia[0]; // Lagra data i global variabel.
 
-		function createNav() { // SKapa navigation.
-			var navContent = '<ul>'; // Lägger ul i en variabel.
-			navContent += listContent; // Lägger till innehållet från listContent i navContent.
-			if (gallerySuccess) { // Om galleriet skapades utan problem.
-				navContent += '<li><a href="#gallery">Galleri</a></li>'; // Så läggs länken till i variabeln navContent.
+				$('.wrapper').show(); // Visa sidan.
+				$('.modal-overlay').removeClass('is-visible'); // Ta bort css-klassen is-visible.
+				$('.modal').removeClass('is-visible');
+				$('.modal').html(''); // Tömmer elementet med klassen modal (infogar ingenting).
+			})
+			.then(loadSucess, loadError); // Anropa funktioner loadSucess om allt lyckades, annars om någon av ajax-körningarna misslyckades så kör loadError.
+		}
+
+		function loadSucess() { // Kör alla funktioner som ska köras när alla hämtningar är färdiga.
+			createNav(postsData); // Skapar en meny utifrån postsData.
+			createPosts(postsData); // Skapar poster uifrån postsData.
+			createGallery(mediaData); // Skapar ett galleri utifrån mediaData.
+		}
+
+		function loadError() { // När ajax-körningen misslyckas...
+			$('.modal-overlay').removeClass('is-visible');
+			$('.modal').removeClass('is-visible');
+			$('.modal').html(''); // Tömmer elementet med klassen modal (infogar ingenting).
+
+			$('.container').html('Misslyckades med att ladda in data från Wordpress.'); // Skriver ett felmeddelande till .container.
+		}
+
+		function createNav(data) { // SKapa navigation.
+			var htmlContent = '<ul>'; // Skapar en ny variabel som all html ska ligga i.
+
+      for (var i = 0; i < data.length; i++) { // Loopar igenom data-objektet som skickats med som parameter.
+        var postData = data[i]; // Skapar variabel som pekar på data[i], för att förenkla.
+        htmlContent += '<li><a href="#' + postData.id + '">' + postData.title.rendered + '</a></li>'; // Lagrar posters titlar för användning i menyn.
 			}
-			navContent += '</ul>';
 
-			$('nav').html(navContent); // Lägger till all navigation i nav.
+			htmlContent += '<li><a href="#gallery">Galleri</a></li>'; // Lägger till meny-val för galleriet.
+			htmlContent += '</ul>';
+
+			$('nav').html(htmlContent); // Lägger till all navigation i nav.
 			eventListening(); // Kör funktionen eventListening för att lägga till lyssnare för menyn.
 		} // Slut på createNav.
 
@@ -196,7 +186,6 @@
 
       for (var i = 0; i < data.length; i++) { // Loopar igenom data-objektet som skickats med som parameter.
         var postData = data[i]; // Skapar variabel som pekar på data[i], för att förenkla.
-        listContent += '<li><a href="#' + postData.id + '">' + postData.title.rendered + '</a></li>'; // Lagrar länk till postens id i en global variabel då den ska användas senare i en annan funktion.
 
         htmlContent += '<section id="' + postData.id + '">\n'; // Skapar ett section-element med postens id.
         htmlContent += '<a href="' + postData.link + '"><h2>' + postData.title.rendered + '</h2></a>\n'; // Skapar en rubrik med postens titel.
@@ -227,7 +216,7 @@
 			scrollEvent(fullMedia); // Kör scrollEvent-funktionen och skickar med parametern fullMedia som är ett objekt.
     } // Slut på createPosts.
 
-		// Kör igång funktionen loadData.
-    loadData();
+		// Kör igång funktionen loadAjax för att hämta data från Wordpress REST API.
+    loadAjax();
 	});
 })(jQuery); // För att undvika konflikter med andra bibliotek.
